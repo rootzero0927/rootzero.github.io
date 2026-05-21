@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guess the Number</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #7c3aed;
+    --accent2: #a78bfa;
+    --low: #f97316;
+    --high: #38bdf8;
+    --win: #4ade80;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.4;
+    animation: gridShift 20s linear infinite;
+  }
+
+  @keyframes gridShift {
+    from { background-position: 0 0; }
+    to   { background-position: 48px 48px; }
+  }
+
+  /* glow blob */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50%       { transform: translate(-50%, -50%) scale(1.15); opacity: 0.7; }
+  }
+
+  .card {
+    position: relative;
+    z-index: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: min(420px, 92vw);
+    box-shadow: 0 0 60px rgba(124,58,237,0.12), 0 24px 64px rgba(0,0,0,0.5);
+  }
+
+  .tag {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.4rem;
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  /* range display */
+  .range-bar {
+    background: var(--border);
+    border-radius: 4px;
+    height: 6px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .range-fill {
+    position: absolute;
+    height: 100%;
+    background: linear-gradient(90deg, var(--low), var(--accent), var(--high));
+    border-radius: 4px;
+    transition: left 0.4s ease, right 0.4s ease;
+    left: 0%; right: 0%;
+  }
+
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    margin-bottom: 2rem;
+  }
+
+  #low-label  { color: var(--low);  transition: color 0.3s; }
+  #high-label { color: var(--high); transition: color 0.3s; }
+
+  /* input area */
+  .input-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  input[type="number"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 1.4rem;
+    padding: 0.7rem 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
+  }
+
+  button {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.7rem 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  button:hover  { background: #6d28d9; box-shadow: 0 0 20px rgba(124,58,237,0.4); }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* feedback message */
+  .message {
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .message.low  { border-color: var(--low);  color: var(--low);  background: rgba(249,115,22,0.08); }
+  .message.high { border-color: var(--high); color: var(--high); background: rgba(56,189,248,0.08); }
+  .message.win  { border-color: var(--win);  color: var(--win);  background: rgba(74,222,128,0.08); }
+  .message.idle { color: var(--muted); }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: currentColor;
+  }
+
+  /* stats row */
+  .stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent2);
+    line-height: 1;
+    transition: transform 0.2s;
+  }
+
+  .stat-val.bump { animation: bump 0.25s ease; }
+  @keyframes bump { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.2rem;
+  }
+
+  /* history */
+  .history-title {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .history {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    min-height: 2rem;
+  }
+
+  .chip {
+    font-size: 11px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn { from { opacity:0; transform:scale(0.8); } to { opacity:1; transform:scale(1); } }
+
+  .chip.low  { border-color: var(--low);  color: var(--low);  background: rgba(249,115,22,0.1); }
+  .chip.high { border-color: var(--high); color: var(--high); background: rgba(56,189,248,0.1); }
+  .chip.win  { border-color: var(--win);  color: var(--win);  background: rgba(74,222,128,0.1); }
+
+  /* play again */
+  #play-again {
+    width: 100%;
+    margin-top: 1rem;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent2);
+    display: none;
+  }
+
+  #play-again:hover { background: rgba(124,58,237,0.15); box-shadow: none; }
+
+  /* shake animation on bad input */
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+  .shake { animation: shake 0.35s ease; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="tag">// game_v1.0</div>
+  <h1>Guess<br>the Number</h1>
+  <p class="subtitle">A secret number between 1 – 100 is waiting.<br>How fast can you find it?</p>
+
+  <div class="range-bar">
+    <div class="range-fill" id="range-fill"></div>
+  </div>
+  <div class="range-labels">
+    <span id="low-label">1</span>
+    <span id="high-label">100</span>
+  </div>
+
+  <div class="input-row">
+    <input type="number" id="guess-input" min="1" max="100" placeholder="???" autofocus>
+    <button id="guess-btn">GUESS</button>
+  </div>
+
+  <div class="message idle" id="message">
+    <span class="dot"></span>
+    <span id="msg-text">Make your first guess...</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val" id="tries-val">0</div>
+      <div class="stat-label">Tries</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="best-val">—</div>
+      <div class="stat-label">Best</div>
+    </div>
+  </div>
+
+  <div class="history-title">// guess history</div>
+  <div class="history" id="history"></div>
+
+  <button id="play-again">↩ PLAY AGAIN</button>
+</div>
+
+<script>
+  let secret, tries, low, high, won;
+
+  function newGame() {
+    secret = Math.floor(Math.random() * 100) + 1;
+    tries  = 0;
+    low    = 1;
+    high   = 100;
+    won    = false;
+
+    document.getElementById('tries-val').textContent = 0;
+    document.getElementById('history').innerHTML = '';
+    document.getElementById('play-again').style.display = 'none';
+    document.getElementById('guess-btn').disabled = false;
+    document.getElementById('guess-input').disabled = false;
+    document.getElementById('guess-input').value = '';
+    document.getElementById('guess-input').focus();
+    setMessage('idle', 'Make your first guess...');
+    updateRange(1, 100);
+    document.getElementById('low-label').textContent = '1';
+    document.getElementById('high-label').textContent = '100';
+  }
+
+  function setMessage(type, text) {
+    const el = document.getElementById('message');
+    el.className = 'message ' + type;
+    document.getElementById('msg-text').textContent = text;
+  }
+
+  function updateRange(lo, hi) {
+    const fill = document.getElementById('range-fill');
+    fill.style.left  = ((lo - 1) / 99 * 100) + '%';
+    fill.style.right = ((100 - hi) / 99 * 100) + '%';
+  }
+
+  function bumpTries() {
+    const el = document.getElementById('tries-val');
+    el.classList.remove('bump');
+    void el.offsetWidth; // reflow
+    el.classList.add('bump');
+    el.textContent = tries;
+  }
+
+  function addChip(num, type) {
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + type;
+    chip.textContent = num;
+    document.getElementById('history').appendChild(chip);
+  }
+
+  function shake() {
+    const inp = document.getElementById('guess-input');
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+  }
+
+  function submitGuess() {
+    if (won) return;
+    const inp   = document.getElementById('guess-input');
+    const guess = parseInt(inp.value);
+
+    if (isNaN(guess) || guess < 1 || guess > 100) {
+      shake();
+      setMessage('idle', 'Enter a number between 1 and 100!');
+      return;
+    }
+
+    tries++;
+    bumpTries();
+    inp.value = '';
+    inp.focus();
+
+    if (guess < secret) {
+      low = Math.max(low, guess + 1);
+      setMessage('low', `${guess} is too low — go higher!`);
+      addChip(guess, 'low');
+      document.getElementById('low-label').textContent = low;
+    } else if (guess > secret) {
+      high = Math.min(high, guess - 1);
+      setMessage('high', `${guess} is too high — go lower!`);
+      addChip(guess, 'high');
+      document.getElementById('high-label').textContent = high;
+    } else {
+      won = true;
+      setMessage('win', `🎉 ${guess} is correct! Got it in ${tries} ${tries === 1 ? 'try' : 'tries'}!`);
+      addChip(guess, 'win');
+      document.getElementById('guess-btn').disabled = true;
+      document.getElementById('guess-input').disabled = true;
+      document.getElementById('play-again').style.display = 'block';
+
+      // update best score
+      const bestEl  = document.getElementById('best-val');
+      const current = parseInt(bestEl.textContent) || Infinity;
+      if (tries < current) bestEl.textContent = tries;
+      return;
+    }
+
+    updateRange(low, high);
+  }
+
+  document.getElementById('guess-btn').addEventListener('click', submitGuess);
+  document.getElementById('play-again').addEventListener('click', newGame);
+  document.getElementById('guess-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitGuess();
+  });
+
+  newGame();
+</script>
+</body>
+</html>
